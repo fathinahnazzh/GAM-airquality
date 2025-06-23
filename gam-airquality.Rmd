@@ -1,0 +1,100 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(mgcv)
+library(caret)
+library(corrplot)
+library(Metrics)
+library(ggplot2)
+```
+
+## Data
+
+```{r}
+data(airquality)
+print(airquality)
+```
+
+## EDA
+
+```{r}
+sum(is.na(airquality))
+```
+
+```{r}
+data=na.omit(airquality)
+```
+
+```{r}
+sum(is.na(data))
+```
+
+```{r}
+summary(data)
+```
+
+```{r}
+corrplot(cor(data), method='color', type='upper', addCoef.col='black', tl.cex=.8, number.cex=.7)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+
+for (var in names(data)) {
+  if (var != "Ozone") {
+    plot(data[[var]], data$quality,
+         xlab = var, ylab = "Ozone",
+         main = paste("Ozone vs", var),
+         col = "steelblue", pch = 19)
+  }
+}
+```
+
+## Data Split
+
+```{r}
+set.seed(123)
+trainIndex=createDataPartition(data$Ozone, p = 0.8, list = FALSE)
+trainData=data[trainIndex, ]
+testData=data[-trainIndex, ]
+```
+
+## Model Gam
+
+```{r}
+gam_model=gam(data$Ozone~s(data$Temp)+s(data$Wind), data=trainData, select=T)
+```
+
+```{r}
+gam_pred=predict(gam_model, data=testData)
+```
+
+## Evaluasi Model
+
+```{r}
+r_squared=cor(data$Ozone, gam_pred)^2
+rmse_value=rmse(data$Ozone, gam_pred)
+
+cat("R-squared: ", round(r_squared, 3), "\n")
+cat("RMSE     : ", round(rmse_value, 3), "\n")
+```
+
+## Plot Residual
+
+```{r}
+residualss=resid(gam_model)
+fittedd=fitted(gam_model)
+```
+
+```{r}
+ggplot(data.frame(Fitted = fittedd, Residual = residualss), aes(x = Fitted, y = Residual)) +
+  geom_point(color = "steelblue") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residual vs Fitted Plot",
+       x = "Fitted Values",
+       y = "Residuals") +
+  theme_minimal()
+```
